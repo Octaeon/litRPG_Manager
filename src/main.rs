@@ -23,7 +23,7 @@ fn main() -> Result<(), ()> {
             let output: Vec<Content> = parseFile(contents)?;
 
             for chunk in output {
-                println!("{:?}", chunk);
+                println!("{chunk}");
             }
 
             fs::write("output.txt", "test")
