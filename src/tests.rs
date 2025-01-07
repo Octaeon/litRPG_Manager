@@ -25,5 +25,5 @@ fn commandParsing() {
 
 #[test]
 fn wholeTextParsing() {
-    let input = "";
+    let _input = "";
 }
