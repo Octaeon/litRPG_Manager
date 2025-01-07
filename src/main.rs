@@ -14,8 +14,6 @@ type Result<T> = std::result::Result<T, Error>;
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    // TODO : Parse the args vector to accept optional commands (like --input "filename.txt" --output "anotherfilename.txt")
-
     if args.len() < 2 {
         return Err(Error::MissingInput);
     }
@@ -26,7 +24,9 @@ fn main() -> Result<()> {
 
     match loaded_file {
         Ok(file_contents) => {
-            let parsed_file: Vec<Content> = parseFile(file_contents)?;
+            let _parsed_file: Vec<Content> = parseFile(file_contents)?;
+
+            // TODO :: BEGIN HERE
 
             fs::write(output_filename, "test")?;
             Ok(())
