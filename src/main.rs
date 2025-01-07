@@ -5,6 +5,8 @@ use std::fs;
 
 use crate::types::{Command, Content, Error};
 
+#[cfg(test)]
+mod tests;
 pub mod types;
 
 type Result<T> = std::result::Result<T, Error>;
