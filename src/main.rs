@@ -18,14 +18,15 @@ fn main() -> Result<()> {
         return Err(Error::MissingInput);
     }
 
-    let filename: &String = &args[1];
-    let loaded_file = fs::read_to_string(filename);
+    let input_filename: &String = &args[1];
+    let output_filename: String = "output.txt".to_string();
+    let loaded_file = fs::read_to_string(input_filename);
 
     match loaded_file {
-        Ok(contents) => {
-            let output: Vec<Content> = parseFile(contents)?;
+        Ok(file_contents) => {
+            let parsed_file: Vec<Content> = parseFile(file_contents)?;
 
-            fs::write("output.txt", "test")?;
+            fs::write(output_filename, "test")?;
             Ok(())
         }
         Err(e) => {
@@ -73,7 +74,7 @@ fn parseFile(input: String) -> Result<Vec<Content>> {
 /// List of commands:
 /// - let : creates a variable and initializes it with the given value. Example: ```let variable 0```
 /// - add : adds a value to a variable. Example: ```add variable 10```
-/// - sub : subtracts a value from a variable. Example: ```sub variable 10```
+/// - subtract : subtracts a value from a variable. Example: ```sub variable 10```
 /// - set : sets a variable to a new value. Example: ```set variable -10```
 fn parseCommand(input: String) -> Result<Content> {
     let words: Vec<&str> = input.split(' ').filter(|c| !c.is_empty()).collect();
@@ -88,6 +89,18 @@ fn parseCommand(input: String) -> Result<Content> {
 
     match words[0] {
         "let" => Ok(Content::Command(Command::Let(
+            words[1].to_string(),
+            words[2].parse::<i32>()?,
+        ))),
+        "add" => Ok(Content::Command(Command::Add(
+            words[1].to_string(),
+            words[2].parse::<i32>()?,
+        ))),
+        "subtract" => Ok(Content::Command(Command::Subtract(
+            words[1].to_string(),
+            words[2].parse::<i32>()?,
+        ))),
+        "set" => Ok(Content::Command(Command::Set(
             words[1].to_string(),
             words[2].parse::<i32>()?,
         ))),
