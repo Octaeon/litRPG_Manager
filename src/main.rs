@@ -3,16 +3,9 @@
 use std::env;
 use std::fs;
 
-#[derive(Debug, Clone)]
-enum Content {
-    Text(String),
-    Command(Command),
-}
+use crate::types::{Command, Content};
 
-#[derive(Debug, Clone, Copy)]
-enum Command {
-    AddOne,
-}
+pub mod types;
 
 fn main() -> Result<(), ()> {
     let args: Vec<String> = env::args().collect();
@@ -77,6 +70,6 @@ fn parseFile(input: String) -> Result<Vec<Content>, ()> {
     }
 }
 
-fn parseCommand(input: String) -> Result<Content, ()> {
+fn parseCommand(_input: String) -> Result<Content, ()> {
     Ok(Content::Command(Command::AddOne))
 }
