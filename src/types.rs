@@ -1,22 +1,22 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     MissingInput,
     InvalidNumberOfArguments,
     CommandLeftOpen,
     UnrecognizedCommand(String),
     Parse(std::num::ParseIntError),
-    IO(std::io::Error),
+    IO(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Content {
     Text(String),
     Command(Command),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Let(String, i32),
     Set(String, i32),
@@ -32,7 +32,7 @@ impl From<std::num::ParseIntError> for Error {
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Error::IO(err)
+        Error::IO(format!("{err}"))
     }
 }
 

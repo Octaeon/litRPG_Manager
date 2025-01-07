@@ -31,7 +31,7 @@ fn main() -> Result<()> {
         }
         Err(e) => {
             println!("{e}");
-            Err(Error::IO(e))
+            Err(Error::IO(e.to_string()))
         }
     }
 }
