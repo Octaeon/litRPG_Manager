@@ -1,5 +1,5 @@
 whatever, these are the contents of the file.
 
-$This is a command$
+$let test 2$
 
 the rest of the file

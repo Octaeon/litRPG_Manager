@@ -3,16 +3,19 @@
 use std::env;
 use std::fs;
 
-use crate::types::{Command, Content};
+use crate::types::{Command, Content, Error};
 
 pub mod types;
 
-fn main() -> Result<(), ()> {
+type Result<T> = std::result::Result<T, Error>;
+
+fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
+    // TODO : Parse the args vector to accept optional commands (like --input "filename.txt" --output "anotherfilename.txt")
+
     if args.len() < 2 {
-        println!("Input the name of the file as the first argument!");
-        return Err(());
+        return Err(Error::MissingInput);
     }
 
     let filename: &String = &args[1];
@@ -22,22 +25,17 @@ fn main() -> Result<(), ()> {
         Ok(contents) => {
             let output: Vec<Content> = parseFile(contents)?;
 
-            for chunk in output {
-                println!("{chunk}");
-            }
-
-            fs::write("output.txt", "test")
-                .expect("For some reason, couldn't write the output to file");
+            fs::write("output.txt", "test")?;
             Ok(())
         }
         Err(e) => {
             println!("{e}");
-            Err(())
+            Err(Error::IO(e))
         }
     }
 }
 
-fn parseFile(input: String) -> Result<Vec<Content>, ()> {
+fn parseFile(input: String) -> Result<Vec<Content>> {
     let mut result: Vec<Content> = vec![];
 
     let mut reading_command: bool = false;
@@ -63,13 +61,36 @@ fn parseFile(input: String) -> Result<Vec<Content>, ()> {
     if reading_command {
         // If all the characters have been read and we're still in the 'reading commands' state, it means that someone opened
         // a command statement but didn't close it, so we throw an error.
-        Err(())
+        Err(Error::CommandLeftOpen)
     } else {
         result.push(Content::Text(buffer));
         Ok(result)
     }
 }
 
-fn parseCommand(_input: String) -> Result<Content, ()> {
-    Ok(Content::Command(Command::AddOne))
+/// The program is meant to work on numbers, which are all stored as integers. No floating point numbers.
+///
+/// List of commands:
+/// - let : creates a variable and initializes it with the given value. Example: ```let variable 0```
+/// - add : adds a value to a variable. Example: ```add variable 10```
+/// - sub : subtracts a value from a variable. Example: ```sub variable 10```
+/// - set : sets a variable to a new value. Example: ```set variable -10```
+fn parseCommand(input: String) -> Result<Content> {
+    let words: Vec<&str> = input.split(' ').filter(|c| !c.is_empty()).collect();
+
+    let amount_of_words = words.len();
+
+    if amount_of_words != 3 {
+        // As of the moment, all of the commands have exactly three words in them, so if we try to parse anything that has
+        // either more or less words than three, we know it's invalid.
+        return Err(Error::InvalidNumberOfArguments);
+    }
+
+    match words[0] {
+        "let" => Ok(Content::Command(Command::Let(
+            words[1].to_string(),
+            words[2].parse::<i32>()?,
+        ))),
+        other_command => Err(Error::UnrecognizedCommand(format!("{other_command}"))),
+    }
 }
