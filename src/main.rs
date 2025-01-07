@@ -46,7 +46,7 @@ fn parseFile(input: String) -> Result<Vec<Content>> {
         match char {
             '$' => {
                 let chunk = if reading_command {
-                    parseCommand(buffer.clone())
+                    parseCommand(buffer.clone()).map(|o| Content::Command(o))
                 } else {
                     Ok(Content::Text(buffer.clone()))
                 };
@@ -76,7 +76,7 @@ fn parseFile(input: String) -> Result<Vec<Content>> {
 /// - add : adds a value to a variable. Example: ```add variable 10```
 /// - subtract : subtracts a value from a variable. Example: ```sub variable 10```
 /// - set : sets a variable to a new value. Example: ```set variable -10```
-fn parseCommand(input: String) -> Result<Content> {
+fn parseCommand(input: String) -> Result<Command> {
     let words: Vec<&str> = input.split(' ').filter(|c| !c.is_empty()).collect();
 
     let amount_of_words = words.len();
@@ -88,22 +88,13 @@ fn parseCommand(input: String) -> Result<Content> {
     }
 
     match words[0] {
-        "let" => Ok(Content::Command(Command::Let(
+        "let" => Ok(Command::Let(words[1].to_string(), words[2].parse::<i32>()?)),
+        "add" => Ok(Command::Add(words[1].to_string(), words[2].parse::<i32>()?)),
+        "subtract" => Ok(Command::Subtract(
             words[1].to_string(),
             words[2].parse::<i32>()?,
-        ))),
-        "add" => Ok(Content::Command(Command::Add(
-            words[1].to_string(),
-            words[2].parse::<i32>()?,
-        ))),
-        "subtract" => Ok(Content::Command(Command::Subtract(
-            words[1].to_string(),
-            words[2].parse::<i32>()?,
-        ))),
-        "set" => Ok(Content::Command(Command::Set(
-            words[1].to_string(),
-            words[2].parse::<i32>()?,
-        ))),
+        )),
+        "set" => Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?)),
         other_command => Err(Error::UnrecognizedCommand(format!("{other_command}"))),
     }
 }
