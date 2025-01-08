@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::hash::Hash;
 
 use crate::types::{Command, Content, Error, RuntimeErr};
 
@@ -37,6 +38,7 @@ fn main() -> Result<()> {
                         output += &t;
                         Ok(())
                     }
+
                     Content::Command(Command::Let(variable, val)) => {
                         // This is a kinda weird bit of code (both because of the default rust formatting and because it's written that way)
                         // but what I wanted to do was to simply return an error if the `insert` function returned Some().
@@ -49,34 +51,27 @@ fn main() -> Result<()> {
                             ))
                         })
                     }
-                    Content::Command(Command::Set(variable, val)) => variables
-                        .insert(variable, val)
-                        .ok_or(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable))
-                        .map(|_| ()),
 
-                    // That last map is a bit annoying. It's necessary because the `ok_or` function returns a result whose type is dependent on what
-                    // type was in the `Option`, and since the `Option` held an `i32`, the Result is therefore a `<i32, Error>` type, while due to the
-                    // first arm in this match, I'm returning a `<(), Error>` type. But whatever, it's only one line and here I spent three lines
-                    // explaining it :P
-                    Content::Command(Command::Add(variable, val)) => match variables.get(&variable)
-                    {
-                        Some(o) => {
-                            variables.insert(variable, o + val);
-                            Ok(())
-                        }
-                        None => Err(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable)),
-                    },
+                    Content::Command(Command::Set(variable, val)) => modifyVariable(
+                        &mut variables,
+                        variable,
+                        |_| val,
+                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+                    ),
 
-                    // OMG the fact that this .get gets formatted to be in the next line but the one before doesn't bugs me so much UGH
-                    Content::Command(Command::Subtract(variable, val)) => match variables
-                        .get(&variable)
-                    {
-                        Some(o) => {
-                            variables.insert(variable, o - val);
-                            Ok(())
-                        }
-                        None => Err(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable)),
-                    },
+                    Content::Command(Command::Add(variable, val)) => modifyVariable(
+                        &mut variables,
+                        variable,
+                        |v| v + val,
+                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+                    ),
+
+                    Content::Command(Command::Subtract(variable, val)) => modifyVariable(
+                        &mut variables,
+                        variable,
+                        |v| v - val,
+                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+                    ),
                 }?;
             }
 
@@ -87,6 +82,29 @@ fn main() -> Result<()> {
             println!("{e}");
             Err(Error::IO(e.to_string()))
         }
+    }
+}
+
+/// This function exists to modify a variable in a `HashMap` in which it exists.
+///
+/// If the variable doesn't exist, it will return the specified error.
+///
+/// It has quite a lot of Trait constraints, but it's the best I could do.
+///
+/// Note : I could modify the function to use the `hashMap.get_mut()` function, but I don't know if it's worth it.
+/// Might be a neat excuse to learn how to benchmark code and see if one is faster than the other in the future.
+fn modifyVariable<E, K: Hash + Eq + PartialEq, V: Copy, F: FnOnce(V) -> V>(
+    hashMap: &mut HashMap<K, V>,
+    key: K,
+    func: F,
+    err: E,
+) -> std::result::Result<(), E> {
+    match hashMap.get(&key) {
+        Some(o) => {
+            hashMap.insert(key, func(*o));
+            Ok(())
+        }
+        None => Err(err),
     }
 }
 
