@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 
-use crate::types::{Command, Content, Error};
+use crate::types::{Command, Content, Error, RuntimeErr};
 
 #[cfg(test)]
 mod tests;
@@ -24,9 +25,60 @@ fn main() -> Result<()> {
 
     match loaded_file {
         Ok(file_contents) => {
-            let _parsed_file: Vec<Content> = parseFile(file_contents)?;
+            let parsed_file: Vec<Content> = parseFile(file_contents)?;
 
-            // TODO :: BEGIN HERE
+            let mut output: String = String::new();
+
+            let mut variables: HashMap<String, i32> = HashMap::new();
+
+            for chunk in parsed_file {
+                match chunk {
+                    Content::Text(t) => {
+                        output += &t;
+                        Ok(())
+                    }
+                    Content::Command(Command::Let(variable, val)) => {
+                        // This is a kinda weird bit of code (both because of the default rust formatting and because it's written that way)
+                        // but what I wanted to do was to simply return an error if the `insert` function returned Some().
+                        // This is because the `let` command is supposed to initialize a variable, and if it returns Some(), it means that there was a variable
+                        // with that name.
+                        // Frankly, I'm not sure if this divide between the `let` and `set` functions is necessary, but I'm gonna try and go with it for now.
+                        variables.insert(variable, val).map_or(Ok(()), |_| {
+                            Err(Error::Runtime(
+                                RuntimeErr::TriedToInitializeExistingVariable,
+                            ))
+                        })
+                    }
+                    Content::Command(Command::Set(variable, val)) => variables
+                        .insert(variable, val)
+                        .ok_or(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable))
+                        .map(|_| ()),
+
+                    // That last map is a bit annoying. It's necessary because the `ok_or` function returns a result whose type is dependent on what
+                    // type was in the `Option`, and since the `Option` held an `i32`, the Result is therefore a `<i32, Error>` type, while due to the
+                    // first arm in this match, I'm returning a `<(), Error>` type. But whatever, it's only one line and here I spent three lines
+                    // explaining it :P
+                    Content::Command(Command::Add(variable, val)) => match variables.get(&variable)
+                    {
+                        Some(o) => {
+                            variables.insert(variable, o + val);
+                            Ok(())
+                        }
+                        None => Err(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable)),
+                    },
+
+                    // OMG the fact that this .get gets formatted to be in the next line but the one before doesn't bugs me so much UGH
+                    Content::Command(Command::Subtract(variable, val)) => match variables
+                        .get(&variable)
+                    {
+                        Some(o) => {
+                            variables.insert(variable, o - val);
+                            Ok(())
+                        }
+                        None => Err(Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable)),
+                    },
+                }?;
+            }
 
             fs::write(output_filename, "test")?;
             Ok(())

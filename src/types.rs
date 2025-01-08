@@ -6,8 +6,15 @@ pub enum Error {
     InvalidNumberOfArguments,
     CommandLeftOpen,
     UnrecognizedCommand(String),
+    Runtime(RuntimeErr),
     Parse(std::num::ParseIntError),
     IO(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RuntimeErr {
+    TriedToInitializeExistingVariable,
+    TriedToModifyNonexistentVariable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +54,14 @@ impl Display for Error {
             Error::Parse(parse_int_error) => write!(f, "{parse_int_error}"),
             Error::IO(error) => write!(f, "{error}"),
             Error::CommandLeftOpen => write!(f, "The command at the end of the file was left open"),
+            Error::Runtime(runtime_err) => match runtime_err {
+                RuntimeErr::TriedToInitializeExistingVariable => {
+                    write!(f, "[Runtime] Tried to initialize already existing variable")
+                }
+                RuntimeErr::TriedToModifyNonexistentVariable => {
+                    write!(f, "[Runtime] Tried to modify a nonexistent variable")
+                }
+            },
         }
     }
 }
