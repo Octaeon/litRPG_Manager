@@ -38,11 +38,22 @@ fn main() -> Result<()> {
     }
 }
 
+/// At the moment, this function takes in a String (which is allocated on the heap)
+/// but doesn't do operation on that specific variable, but instead assigns individuals chars of the input
+/// to the buffer depending on their value.
+///
+/// A better way to do this would be to instead keep track of the locations of the breakpoints, and when
+/// we find the next, take that chunk of text and use it to do whatever.
+///
+/// If the end result were to be a string slice (`&str`), there would be the question of lifetimes, but it would
+/// be easier to simply create a new string with that content, essentially cloning it.
+///
+/// Importantly for optimization, the input string shouldn't be touched at all and simply copied.
 fn parseFile(input: String) -> Result<Vec<Content>> {
     let mut result: Vec<Content> = vec![];
 
     let mut reading_command: bool = false;
-    let mut buffer: String = "".to_string();
+    let mut buffer: String = String::new();
 
     for char in input.chars() {
         match char {
