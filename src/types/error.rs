@@ -2,29 +2,34 @@ use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    MissingInput,
-    InvalidNumberOfArguments,
-    CommandLeftOpen,
-    UnrecognizedCommand(String),
-    Runtime(RuntimeErr),
-    Parse(std::num::ParseIntError),
     IO(String),
+    Parse(ParsingErr),
+    Runtime(RunErr),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RuntimeErr {
+pub enum ParsingErr {
+    InvalidNumberOfArguments,
+    CommandLeftOpen,
+    UnrecognizedCommand(String),
+    NumberParsing(std::num::ParseIntError),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RunErr {
+    MissingInput,
     TriedToInitializeExistingVariable,
     TriedToModifyNonexistentVariable,
 }
 
-impl From<RuntimeErr> for Error {
-    fn from(err: RuntimeErr) -> Self {
+impl From<RunErr> for Error {
+    fn from(err: RunErr) -> Self {
         Error::Runtime(err)
     }
 }
 
-impl From<std::num::ParseIntError> for Error {
-    fn from(err: std::num::ParseIntError) -> Error {
+impl From<ParsingErr> for Error {
+    fn from(err: ParsingErr) -> Self {
         Error::Parse(err)
     }
 }
@@ -35,27 +40,57 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<std::num::ParseIntError> for ParsingErr {
+    fn from(err: std::num::ParseIntError) -> ParsingErr {
+        ParsingErr::NumberParsing(err)
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::MissingInput => write!(f, "Input the name of the file as the first argument"),
-            Error::InvalidNumberOfArguments => {
-                write!(f, "Invalid number of arguments provided to a command")
-            }
-            Error::UnrecognizedCommand(c) => write!(f, "Unrecognized command '{c}'"),
-            Error::Parse(parse_int_error) => write!(f, "{parse_int_error}"),
-            Error::IO(error) => write!(f, "{error}"),
-            Error::CommandLeftOpen => write!(f, "The command at the end of the file was left open"),
-            Error::Runtime(runtime_err) => match runtime_err {
-                RuntimeErr::TriedToInitializeExistingVariable => {
-                    write!(f, "[Runtime] Tried to initialize already existing variable")
-                }
-                RuntimeErr::TriedToModifyNonexistentVariable => {
-                    write!(f, "[Runtime] Tried to modify a nonexistent variable")
-                }
-            },
+            Error::IO(io_err) => write!(f, "[IO] {io_err}"),
+            Error::Parse(parsing_err) => write!(f, "[Parsing] {parsing_err}"),
+            Error::Runtime(run_err) => write!(f, "[Runtime] {run_err}"),
         }
     }
 }
 
+impl Display for ParsingErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ParsingErr::InvalidNumberOfArguments =>
+                    String::from("Invalid number of arguments provided to a command"),
+                ParsingErr::CommandLeftOpen =>
+                    String::from("The command at the end of the file was left open"),
+                ParsingErr::UnrecognizedCommand(command) =>
+                    format!("Unrecognized command: {command}"),
+                ParsingErr::NumberParsing(parse_int_error) =>
+                    format!("Failed conversion to i32: '{parse_int_error}'"),
+            }
+        )
+    }
+}
+
+impl Display for RunErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RunErr::MissingInput => "Input the name of the file as the first argument",
+                RunErr::TriedToInitializeExistingVariable =>
+                    "Tried to initialize already existing variable",
+                RunErr::TriedToModifyNonexistentVariable =>
+                    "Tried to modify a nonexistent variable",
+            }
+        )
+    }
+}
+
 impl std::error::Error for Error {}
+impl std::error::Error for ParsingErr {}
+impl std::error::Error for RunErr {}

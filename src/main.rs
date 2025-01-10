@@ -4,6 +4,8 @@ use std::env;
 use std::fs;
 
 use types::engine::Storage;
+use types::error::ParsingErr;
+use types::error::RunErr;
 
 use crate::types::error::Error;
 use crate::types::{Command, Content};
@@ -13,13 +15,12 @@ mod tests;
 mod types;
 mod util;
 
-type Result<T> = std::result::Result<T, Error>;
-
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        return Err(Error::MissingInput);
+        // This is a hack but it looks nice
+        Err(RunErr::MissingInput)?;
     }
 
     // Get the locations where we should read the file from and where to save it.
@@ -76,7 +77,7 @@ fn main() -> Result<()> {
 /// be easier to simply create a new string with that content, essentially cloning it.
 ///
 /// Importantly for optimization, the input string shouldn't be touched at all and simply copied.
-fn parseFile(input: String) -> Result<Vec<Content>> {
+fn parseFile(input: String) -> Result<Vec<Content>, ParsingErr> {
     let mut result: Vec<Content> = vec![];
 
     let mut reading_command: bool = false;
@@ -102,7 +103,7 @@ fn parseFile(input: String) -> Result<Vec<Content>> {
     if reading_command {
         // If all the characters have been read and we're still in the 'reading commands' state, it means that someone opened
         // a command statement but didn't close it, so we throw an error.
-        Err(Error::CommandLeftOpen)
+        Err(ParsingErr::CommandLeftOpen)
     } else {
         result.push(Content::Text(buffer));
         Ok(result)
@@ -116,7 +117,7 @@ fn parseFile(input: String) -> Result<Vec<Content>> {
 /// - add : adds a value to a variable. Example: ```add variable 10```
 /// - subtract : subtracts a value from a variable. Example: ```sub variable 10```
 /// - set : sets a variable to a new value. Example: ```set variable -10```
-fn parseCommand(input: String) -> Result<Command> {
+fn parseCommand(input: String) -> Result<Command, ParsingErr> {
     let words: Vec<&str> = input.split(' ').filter(|c| !c.is_empty()).collect();
 
     let amount_of_words = words.len();
@@ -124,7 +125,7 @@ fn parseCommand(input: String) -> Result<Command> {
     if amount_of_words != 3 {
         // As of the moment, all of the commands have exactly three words in them, so if we try to parse anything that has
         // either more or less words than three, we know it's invalid.
-        return Err(Error::InvalidNumberOfArguments);
+        return Err(ParsingErr::InvalidNumberOfArguments);
     }
 
     match words[0] {
@@ -135,6 +136,6 @@ fn parseCommand(input: String) -> Result<Command> {
             words[2].parse::<i32>()?,
         )),
         "set" => Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?)),
-        other_command => Err(Error::UnrecognizedCommand(format!("{other_command}"))),
+        other_command => Err(ParsingErr::UnrecognizedCommand(format!("{other_command}"))),
     }
 }
