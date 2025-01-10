@@ -17,6 +17,12 @@ pub enum RuntimeErr {
     TriedToModifyNonexistentVariable,
 }
 
+impl From<RuntimeErr> for Error {
+    fn from(err: RuntimeErr) -> Self {
+        Error::Runtime(err)
+    }
+}
+
 impl From<std::num::ParseIntError> for Error {
     fn from(err: std::num::ParseIntError) -> Error {
         Error::Parse(err)

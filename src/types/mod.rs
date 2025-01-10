@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+pub mod engine;
 pub mod error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
