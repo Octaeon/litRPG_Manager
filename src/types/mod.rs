@@ -29,7 +29,7 @@ impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[Command] {}",
+            "[Command] {} |",
             match self {
                 Self::Let(var, v) => format!("Let {var} be {v}"),
                 Self::Set(var, v) => format!("Set {var} to be {v}"),
