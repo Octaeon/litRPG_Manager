@@ -122,20 +122,43 @@ fn parseCommand(input: String) -> Result<Command, ParsingErr> {
 
     let amount_of_words = words.len();
 
-    if amount_of_words != 3 {
-        // As of the moment, all of the commands have exactly three words in them, so if we try to parse anything that has
-        // either more or less words than three, we know it's invalid.
+    // This is a tiny function I made to check if the number of words is equal to the expected.
+    // This could of course be done in each match case, but this way it's much less code repetition.
+    let checkNumOfArguments = |expectedNumOfWords: usize| {
+        if expectedNumOfWords == amount_of_words - 1 {
+            Ok(())
+        } else {
+            Err(ParsingErr::InvalidNumberOfArguments)
+        }
+    };
+
+    // First, before even trying to match the first command, we must ensure there is at least one. We could always get
+    // an empty string as input, after all.
+    if amount_of_words == 0 {
         return Err(ParsingErr::InvalidNumberOfArguments);
     }
 
     match words[0] {
-        "let" => Ok(Command::Let(words[1].to_string(), words[2].parse::<i32>()?)),
-        "add" => Ok(Command::Add(words[1].to_string(), words[2].parse::<i32>()?)),
-        "subtract" => Ok(Command::Subtract(
-            words[1].to_string(),
-            words[2].parse::<i32>()?,
-        )),
-        "set" => Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?)),
-        other_command => Err(ParsingErr::UnrecognizedCommand(format!("{other_command}"))),
+        "let" => {
+            checkNumOfArguments(2)?;
+            Ok(Command::Let(words[1].to_string(), words[2].parse::<i32>()?))
+        }
+
+        "add" => {
+            checkNumOfArguments(2)?;
+            Ok(Command::Add(words[1].to_string(), words[2].parse::<i32>()?))
+        }
+        "subtract" => {
+            checkNumOfArguments(2)?;
+            Ok(Command::Subtract(
+                words[1].to_string(),
+                words[2].parse::<i32>()?,
+            ))
+        }
+        "set" => {
+            checkNumOfArguments(2)?;
+            Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?))
+        }
+        other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
     }
 }
