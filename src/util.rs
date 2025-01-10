@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::{collections::HashMap, hash::Hash};
 
 /// This function exists to modify a variable in a `HashMap` in which it exists.
