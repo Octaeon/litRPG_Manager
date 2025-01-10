@@ -2,6 +2,7 @@
 
 use std::env;
 use std::fs;
+use std::ops::Not;
 
 use types::engine::Storage;
 use types::error::ParsingErr;
@@ -57,6 +58,13 @@ fn main() -> Result<(), Error> {
             Content::Command(Command::Subtract(variable, val)) => {
                 storage.modifyVariable(variable, |og| og - val)
             }
+            Content::Command(Command::Write(variable)) => match storage.getValue(variable) {
+                Ok(val) => {
+                    output += &val.to_string();
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            },
         }?;
     }
 
@@ -86,15 +94,18 @@ fn parseFile(input: String) -> Result<Vec<Content>, ParsingErr> {
     for char in input.chars() {
         match char {
             '$' => {
+                // If we encounter a $, it means that we're either at the beginning of the command, or at the end
+                // If `reading_command` flag is true, it means we were at the end of one, so try and parse it and set the flag to false.
+                // If it's false, then we're at the beginning of one, so set the flag to true.
                 let chunk = if reading_command {
                     parseCommand(buffer.clone()).map(|o| Content::Command(o))
                 } else {
                     Ok(Content::Text(buffer.clone()))
-                };
+                }?;
 
-                result.push(chunk?);
                 reading_command = !reading_command;
-                buffer = "".to_string();
+                result.push(chunk);
+                buffer = String::new();
             }
             _ => buffer.push(char),
         }
@@ -158,6 +169,10 @@ fn parseCommand(input: String) -> Result<Command, ParsingErr> {
         "set" => {
             checkNumOfArguments(2)?;
             Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?))
+        }
+        "write" => {
+            checkNumOfArguments(1)?;
+            Ok(Command::Write(words[1].to_string()))
         }
         other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
     }

@@ -36,4 +36,11 @@ impl Storage {
             None => Err(RunErr::TriedToModifyNonexistentVariable),
         }
     }
+
+    pub fn getValue(&self, key: String) -> Result<i32, RunErr> {
+        self.variables
+            .get(&key)
+            .copied()
+            .ok_or(RunErr::TriedToGetNonexistentVariable)
+    }
 }

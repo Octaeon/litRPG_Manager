@@ -20,6 +20,7 @@ pub enum RunErr {
     MissingInput,
     TriedToInitializeExistingVariable,
     TriedToModifyNonexistentVariable,
+    TriedToGetNonexistentVariable,
 }
 
 impl From<RunErr> for Error {
@@ -86,6 +87,7 @@ impl Display for RunErr {
                     "Tried to initialize already existing variable",
                 RunErr::TriedToModifyNonexistentVariable =>
                     "Tried to modify a nonexistent variable",
+                RunErr::TriedToGetNonexistentVariable => "Tried to get a nonexistent variable",
             }
         )
     }

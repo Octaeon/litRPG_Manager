@@ -15,6 +15,7 @@ pub enum Command {
     Set(String, i32),
     Add(String, i32),
     Subtract(String, i32),
+    Write(String),
 }
 
 impl Display for Content {
@@ -36,6 +37,7 @@ impl Display for Command {
                 Self::Set(var, v) => format!("Set {var} to be {v}"),
                 Self::Add(var, v) => format!("Add {v} to {var}"),
                 Self::Subtract(var, v) => format!("Subtract {v} from {var}"),
+                Self::Write(var) => format!("Write the variable {var}"),
             }
         )
     }
