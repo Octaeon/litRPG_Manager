@@ -2,7 +2,6 @@
 
 use std::env;
 use std::fs;
-use std::ops::Not;
 
 use types::engine::Storage;
 use types::error::ParsingErr;

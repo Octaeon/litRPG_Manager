@@ -3,18 +3,20 @@ use super::*;
 #[test]
 fn commandParsing() {
     assert_eq!(
-        parseCommand("test".to_string()),
-        Err(Error::InvalidNumberOfArguments)
+        parseCommand("let a".to_string()),
+        Err(ParsingErr::InvalidNumberOfArguments)
     );
 
     assert_eq!(
         parseCommand("another test whatever".to_string()),
-        Err(Error::UnrecognizedCommand("another".to_string()))
+        Err(ParsingErr::UnrecognizedCommand("another".to_string()))
     );
 
     assert_eq!(
         parseCommand("let it be...".to_string()),
-        Err(Error::Parse("be...".parse::<i32>().expect_err("")))
+        Err(ParsingErr::NumberParsing(
+            "be...".parse::<i32>().expect_err("")
+        ))
     );
 
     assert_eq!(
