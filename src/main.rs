@@ -21,69 +21,68 @@ fn main() -> Result<()> {
         return Err(Error::MissingInput);
     }
 
+    // Get the locations where we should read the file from and where to save it.
     let input_filename: &String = &args[1];
     let output_filename: String = "output.txt".to_string();
-    let loaded_file = fs::read_to_string(input_filename);
 
-    match loaded_file {
-        Ok(file_contents) => {
-            let parsed_file: Vec<Content> = parseFile(file_contents)?;
+    // Try to load the file and parse it into `Content`
+    let loaded_file = fs::read_to_string(input_filename)?;
+    let parsed_file = parseFile(loaded_file)?;
 
-            let mut output: String = String::new();
+    // Start interpreting the file
+    let mut output: String = String::new();
 
-            let mut variables: HashMap<String, i32> = HashMap::new();
+    let mut variables: HashMap<String, i32> = HashMap::new();
 
-            for chunk in parsed_file {
-                match chunk {
-                    Content::Text(t) => {
-                        output += &t;
-                        Ok(())
-                    }
-
-                    Content::Command(Command::Let(variable, val)) => {
-                        // This is a kinda weird bit of code (both because of the default rust formatting and because it's written that way)
-                        // but what I wanted to do was to simply return an error if the `insert` function returned Some().
-                        // This is because the `let` command is supposed to initialize a variable, and if it returns Some(), it means that there was a variable
-                        // with that name.
-                        // Frankly, I'm not sure if this divide between the `let` and `set` functions is necessary, but I'm gonna try and go with it for now.
-                        variables.insert(variable, val).map_or(Ok(()), |_| {
-                            Err(Error::Runtime(
-                                RuntimeErr::TriedToInitializeExistingVariable,
-                            ))
-                        })
-                    }
-
-                    Content::Command(Command::Set(variable, val)) => modifyVariable(
-                        &mut variables,
-                        variable,
-                        |_| val,
-                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
-                    ),
-
-                    Content::Command(Command::Add(variable, val)) => modifyVariable(
-                        &mut variables,
-                        variable,
-                        |v| v + val,
-                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
-                    ),
-
-                    Content::Command(Command::Subtract(variable, val)) => modifyVariable(
-                        &mut variables,
-                        variable,
-                        |v| v - val,
-                        Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
-                    ),
-                }?;
+    for chunk in parsed_file {
+        match chunk {
+            Content::Text(t) => {
+                // If the `Content` is just a chunk of text, simply add it to the output.
+                output += &t;
+                Ok(())
             }
 
-            fs::write(output_filename, "test")?;
-            Ok(())
-        }
-        Err(e) => {
-            println!("{e}");
-            Err(Error::IO(e.to_string()))
-        }
+            // If the `Content` is a command, execute it.
+            Content::Command(Command::Let(variable, val)) => {
+                // This is a kinda weird bit of code (both because of the default rust formatting and because it's written that way)
+                // but what I wanted to do was to simply return an error if the `insert` function returned Some().
+                // This is because the `let` command is supposed to initialize a variable, and if it returns Some(), it means that there was a variable
+                // with that name.
+                // Frankly, I'm not sure if this divide between the `let` and `set` functions is necessary, but I'm gonna try and go with it for now.
+                variables.insert(variable, val).map_or(Ok(()), |_| {
+                    Err(Error::Runtime(
+                        RuntimeErr::TriedToInitializeExistingVariable,
+                    ))
+                })
+            }
+
+            Content::Command(Command::Set(variable, val)) => modifyVariable(
+                &mut variables,
+                variable,
+                |_| val,
+                Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+            ),
+
+            Content::Command(Command::Add(variable, val)) => modifyVariable(
+                &mut variables,
+                variable,
+                |v| v + val,
+                Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+            ),
+
+            Content::Command(Command::Subtract(variable, val)) => modifyVariable(
+                &mut variables,
+                variable,
+                |v| v - val,
+                Error::Runtime(RuntimeErr::TriedToModifyNonexistentVariable),
+            ),
+        }?;
     }
+
+    // Save the output to file
+    fs::write(output_filename, output)?;
+
+    Ok(())
 }
 
 /// At the moment, this function takes in a String (which is allocated on the heap)
