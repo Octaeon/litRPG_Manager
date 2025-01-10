@@ -4,7 +4,8 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 
-use crate::types::{Command, Content, Error, RuntimeErr};
+use crate::types::error::{Error, RuntimeErr};
+use crate::types::{Command, Content};
 use crate::util::modifyVariable;
 
 #[cfg(test)]
