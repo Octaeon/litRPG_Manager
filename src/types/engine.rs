@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::error::RunErr;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Storage {
     variables: HashMap<String, i32>,
 }
