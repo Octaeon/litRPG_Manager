@@ -12,29 +12,42 @@ use crate::types::{Command, Content};
 /// be easier to simply create a new string with that content, essentially cloning it.
 ///
 /// Importantly for optimization, the input string shouldn't be touched at all and simply copied.
-pub fn parseFile(input: String) -> Result<Vec<Content>, ParsingErr> {
+pub fn parseFile(inputString: String) -> Result<Vec<Content>, ParsingErr> {
     let mut result: Vec<Content> = vec![];
 
-    let mut reading_command: bool = false;
-    let mut buffer: String = String::new();
+    let getter = |a: usize, b: usize| -> Result<String, ParsingErr> {
+        inputString
+            .get(a..b)
+            .map(|slice| slice.to_owned())
+            .ok_or(ParsingErr::StringOverflow)
+    };
 
-    for char in input.chars() {
+    let mut reading_command: bool = false;
+
+    let mut chunk_start = 0;
+    let mut current = 0;
+
+    for char in inputString.clone().chars() {
+        current += 1;
+
         match char {
             '$' => {
                 // If we encounter a $, it means that we're either at the beginning of the command, or at the end
                 // If `reading_command` flag is true, it means we were at the end of one, so try and parse it and set the flag to false.
                 // If it's false, then we're at the beginning of one, so set the flag to true.
+                let t = getter(chunk_start, current - 1)?;
+
                 let chunk = if reading_command {
-                    parseCommand(buffer.clone()).map(|o| Content::Command(o))
+                    parseCommand(t).map(|o| Content::Command(o))
                 } else {
-                    Ok(Content::Text(buffer.clone()))
+                    Ok(Content::Text(t))
                 }?;
 
                 reading_command = !reading_command;
                 result.push(chunk);
-                buffer = String::new();
+                chunk_start = current;
             }
-            _ => buffer.push(char),
+            _ => {}
         }
     }
 
@@ -43,11 +56,47 @@ pub fn parseFile(input: String) -> Result<Vec<Content>, ParsingErr> {
         // a command statement but didn't close it, so we throw an error.
         Err(ParsingErr::CommandLeftOpen)
     } else {
-        if !buffer.is_empty() {
-            result.push(Content::Text(buffer));
+        if chunk_start < current {
+            result.push(Content::Text(getter(chunk_start, current)?));
         }
         Ok(result)
     }
+
+    // let mut result: Vec<Content> = vec![];
+
+    // let mut reading_command: bool = false;
+    // let mut buffer: String = String::new();
+
+    // for char in input.chars() {
+    //     match char {
+    //         '$' => {
+    //             // If we encounter a $, it means that we're either at the beginning of the command, or at the end
+    //             // If `reading_command` flag is true, it means we were at the end of one, so try and parse it and set the flag to false.
+    //             // If it's false, then we're at the beginning of one, so set the flag to true.
+    //             let chunk = if reading_command {
+    //                 parseCommand(buffer.clone()).map(|o| Content::Command(o))
+    //             } else {
+    //                 Ok(Content::Text(buffer.clone()))
+    //             }?;
+
+    //             reading_command = !reading_command;
+    //             result.push(chunk);
+    //             buffer = String::new();
+    //         }
+    //         _ => buffer.push(char),
+    //     }
+    // }
+
+    // if reading_command {
+    //     // If all the characters have been read and we're still in the 'reading commands' state, it means that someone opened
+    //     // a command statement but didn't close it, so we throw an error.
+    //     Err(ParsingErr::CommandLeftOpen)
+    // } else {
+    //     if !buffer.is_empty() {
+    //         result.push(Content::Text(buffer));
+    //     }
+    //     Ok(result)
+    // }
 }
 
 /// The program is meant to work on numbers, which are all stored as integers. No floating point numbers.

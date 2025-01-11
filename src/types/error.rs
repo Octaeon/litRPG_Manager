@@ -9,6 +9,7 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParsingErr {
+    StringOverflow,
     InvalidNumberOfArguments,
     CommandLeftOpen,
     UnrecognizedCommand(String),
@@ -63,6 +64,8 @@ impl Display for ParsingErr {
             f,
             "{}",
             match self {
+                ParsingErr::StringOverflow =>
+                    String::from("Somehow, the contents of the file caused a string overflow."),
                 ParsingErr::InvalidNumberOfArguments =>
                     String::from("Invalid number of arguments provided to a command"),
                 ParsingErr::CommandLeftOpen =>
