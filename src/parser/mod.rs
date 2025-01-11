@@ -61,42 +61,6 @@ pub fn parseFile(inputString: String) -> Result<Vec<Content>, ParsingErr> {
         }
         Ok(result)
     }
-
-    // let mut result: Vec<Content> = vec![];
-
-    // let mut reading_command: bool = false;
-    // let mut buffer: String = String::new();
-
-    // for char in input.chars() {
-    //     match char {
-    //         '$' => {
-    //             // If we encounter a $, it means that we're either at the beginning of the command, or at the end
-    //             // If `reading_command` flag is true, it means we were at the end of one, so try and parse it and set the flag to false.
-    //             // If it's false, then we're at the beginning of one, so set the flag to true.
-    //             let chunk = if reading_command {
-    //                 parseCommand(buffer.clone()).map(|o| Content::Command(o))
-    //             } else {
-    //                 Ok(Content::Text(buffer.clone()))
-    //             }?;
-
-    //             reading_command = !reading_command;
-    //             result.push(chunk);
-    //             buffer = String::new();
-    //         }
-    //         _ => buffer.push(char),
-    //     }
-    // }
-
-    // if reading_command {
-    //     // If all the characters have been read and we're still in the 'reading commands' state, it means that someone opened
-    //     // a command statement but didn't close it, so we throw an error.
-    //     Err(ParsingErr::CommandLeftOpen)
-    // } else {
-    //     if !buffer.is_empty() {
-    //         result.push(Content::Text(buffer));
-    //     }
-    //     Ok(result)
-    // }
 }
 
 /// The program is meant to work on numbers, which are all stored as integers. No floating point numbers.
