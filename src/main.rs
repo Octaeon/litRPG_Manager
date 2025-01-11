@@ -115,7 +115,9 @@ fn parseFile(input: String) -> Result<Vec<Content>, ParsingErr> {
         // a command statement but didn't close it, so we throw an error.
         Err(ParsingErr::CommandLeftOpen)
     } else {
-        result.push(Content::Text(buffer));
+        if !buffer.is_empty() {
+            result.push(Content::Text(buffer));
+        }
         Ok(result)
     }
 }
