@@ -4,9 +4,7 @@ use std::env;
 use std::fs;
 
 use types::engine::Storage;
-use types::error::RunErr;
-
-use crate::types::error::Error;
+use types::error::{Error, RunErr};
 
 #[cfg(test)]
 mod tests;
