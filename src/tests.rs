@@ -27,5 +27,21 @@ fn commandParsing() {
 
 #[test]
 fn wholeTextParsing() {
-    let _input = "";
+    let wrongInput: String = String::from("$unclosed command");
+    assert_eq!(parseFile(wrongInput), Err(ParsingErr::CommandLeftOpen));
+
+    let goodInput: String = String::from(
+        "This is text\n$let variable -1$More text\n$add variable 2$Variable is $write variable$",
+    );
+    assert_eq!(
+        parseFile(goodInput),
+        Ok(vec![
+            Content::Text("This is text\n".to_string()),
+            Content::Command(Command::Let("variable".to_string(), -1)),
+            Content::Text("More text\n".to_string()),
+            Content::Command(Command::Add("variable".to_string(), 2)),
+            Content::Text("Variable is ".to_string()),
+            Content::Command(Command::Write("variable".to_string()))
+        ])
+    );
 }
