@@ -13,6 +13,10 @@ impl Storage {
         Default::default()
     }
 
+    pub fn clear(&mut self) {
+        self.variables.clear();
+    }
+
     pub fn createVariable(&mut self, variable: String, val: i32) -> Result<(), RunErr> {
         // This is a kinda weird bit of code (both because of the default rust formatting and because it's written that way)
         // but what I wanted to do was to simply return an error if the `insert` function returned Some().
