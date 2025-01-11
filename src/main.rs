@@ -10,6 +10,7 @@ use types::error::RunErr;
 use crate::types::error::Error;
 use crate::types::{Command, Content};
 
+mod interpreter;
 #[cfg(test)]
 mod tests;
 mod types;
@@ -19,53 +20,27 @@ fn main() -> Result<(), Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        // This is a hack but it looks nice
+        // This is a hack but it looks nice (better than using the return keyword)
         Err(RunErr::MissingInput)?;
     }
 
     // Get the locations where we should read the file from and where to save it.
-    let input_filename: &String = &args[1];
-    let output_filename: String = "output.txt".to_string();
+    let input_filename: String = args[1].to_owned();
+    let output_filename: &str = "output.txt";
 
     // Try to load the file and parse it into `Content`
     let loaded_file = fs::read_to_string(input_filename)?;
+
+    // Try and parse the file
     let parsed_file = parseFile(loaded_file)?;
 
-    // Start interpreting the file
-    let mut output: String = String::new();
-
+    // Initialize the storage
     let mut storage: Storage = Storage::new();
 
-    for chunk in parsed_file {
-        match chunk {
-            Content::Text(t) => {
-                // If the `Content` is just a chunk of text, simply add it to the output.
-                output += &t;
-                Ok(())
-            }
-
-            // If the `Content` is a command, execute it.
-            Content::Command(Command::Let(variable, val)) => storage.createVariable(variable, val),
-
-            Content::Command(Command::Set(variable, val)) => {
-                storage.modifyVariable(variable, |_| val)
-            }
-            Content::Command(Command::Add(variable, val)) => {
-                storage.modifyVariable(variable, |og| og + val)
-            }
-
-            Content::Command(Command::Subtract(variable, val)) => {
-                storage.modifyVariable(variable, |og| og - val)
-            }
-            Content::Command(Command::Write(variable)) => match storage.getValue(variable) {
-                Ok(val) => {
-                    output += &val.to_string();
-                    Ok(())
-                }
-                Err(err) => Err(err),
-            },
-        }?;
-    }
+    // Run the interpreter on the parsed file and pass in the mutable reference to the storage.
+    // This is going to be useful later, when we're going to be parsing and interpreting multiple files in the row
+    // while needing to retain the memory of variables initialized and modified in previous files.
+    let output = interpreter::run(&mut storage, parsed_file)?;
 
     // Save the output to file
     fs::write(output_filename, output)?;
