@@ -4,6 +4,7 @@ $let test 2$
 
 the rest of the file
 
-$add test 5$
+$add test 2; add test 1
+add test 2$
 
 here is TEST:$write test$

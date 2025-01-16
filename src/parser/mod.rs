@@ -37,14 +37,19 @@ pub fn parseFile(inputString: String) -> Result<Vec<Content>, ParsingErr> {
                 // If it's false, then we're at the beginning of one, so set the flag to true.
                 let t = getter(chunk_start, current - 1)?;
 
-                let chunk = if reading_command {
-                    parseCommand(t).map(|o| Content::Command(o))
+                let mut chunk = if reading_command {
+                    parseCommand(t).map(|commands| {
+                        commands
+                            .iter()
+                            .map(|o| Content::Command(o.clone()))
+                            .collect()
+                    })
                 } else {
-                    Ok(Content::Text(t))
+                    Ok(vec![Content::Text(t)])
                 }?;
 
                 reading_command = !reading_command;
-                result.push(chunk);
+                result.append(&mut chunk);
                 chunk_start = current;
             }
             _ => {}
@@ -63,6 +68,22 @@ pub fn parseFile(inputString: String) -> Result<Vec<Content>, ParsingErr> {
     }
 }
 
+fn matchWhitespace(character: char) -> bool {
+    match character {
+        ' ' => true,
+        '\n' => true,
+        _ => false,
+    }
+}
+
+fn matchCommandEnd(character: char) -> bool {
+    match character {
+        '\n' => true,
+        ';' => true,
+        _ => false,
+    }
+}
+
 /// The program is meant to work on numbers, which are all stored as integers. No floating point numbers.
 ///
 /// List of commands:
@@ -70,52 +91,68 @@ pub fn parseFile(inputString: String) -> Result<Vec<Content>, ParsingErr> {
 /// - add : adds a value to a variable. Example: ```add variable 10```
 /// - subtract : subtracts a value from a variable. Example: ```sub variable 10```
 /// - set : sets a variable to a new value. Example: ```set variable -10```
-pub fn parseCommand(input: String) -> Result<Command, ParsingErr> {
-    let words: Vec<&str> = input.split(' ').filter(|c| !c.is_empty()).collect();
+pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
+    let statements: Vec<&str> = input
+        .split(matchCommandEnd)
+        .filter(|c| !c.is_empty())
+        .collect();
 
-    let amount_of_words = words.len();
+    let mut result_commands: Vec<Command> = Vec::new();
 
-    // This is a tiny function I made to check if the number of words is equal to the expected.
-    // This could of course be done in each match case, but this way it's much less code repetition.
-    let checkNumOfArguments = |expectedNumOfWords: usize| {
-        if expectedNumOfWords == amount_of_words - 1 {
-            Ok(())
-        } else {
-            Err(ParsingErr::InvalidNumberOfArguments)
+    for com in statements {
+        let words: Vec<&str> = com
+            .split(matchWhitespace)
+            .filter(|c| !c.is_empty())
+            .collect();
+
+        let amount_of_words = words.len();
+
+        // This is a tiny function I made to check if the number of words is equal to the expected.
+        // This could of course be done in each match case, but this way it's much less code repetition.
+        let checkNumOfArguments = |expectedNumOfWords: usize| {
+            if expectedNumOfWords == amount_of_words - 1 {
+                Ok(())
+            } else {
+                Err(ParsingErr::InvalidNumberOfArguments)
+            }
+        };
+
+        // First, before even trying to match the first command, we must ensure there is at least one. We could always get
+        // an empty string as input, after all.
+        if amount_of_words == 0 {
+            return Err(ParsingErr::InvalidNumberOfArguments);
         }
-    };
 
-    // First, before even trying to match the first command, we must ensure there is at least one. We could always get
-    // an empty string as input, after all.
-    if amount_of_words == 0 {
-        return Err(ParsingErr::InvalidNumberOfArguments);
+        let command = match words[0] {
+            "let" => {
+                checkNumOfArguments(2)?;
+                Ok(Command::Let(words[1].to_string(), words[2].parse::<i32>()?))
+            }
+
+            "add" => {
+                checkNumOfArguments(2)?;
+                Ok(Command::Add(words[1].to_string(), words[2].parse::<i32>()?))
+            }
+            "subtract" => {
+                checkNumOfArguments(2)?;
+                Ok(Command::Subtract(
+                    words[1].to_string(),
+                    words[2].parse::<i32>()?,
+                ))
+            }
+            "set" => {
+                checkNumOfArguments(2)?;
+                Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?))
+            }
+            "write" => {
+                checkNumOfArguments(1)?;
+                Ok(Command::Write(words[1].to_string()))
+            }
+            other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
+        }?;
+
+        result_commands.push(command);
     }
 
-    match words[0] {
-        "let" => {
-            checkNumOfArguments(2)?;
-            Ok(Command::Let(words[1].to_string(), words[2].parse::<i32>()?))
-        }
-
-        "add" => {
-            checkNumOfArguments(2)?;
-            Ok(Command::Add(words[1].to_string(), words[2].parse::<i32>()?))
-        }
-        "subtract" => {
-            checkNumOfArguments(2)?;
-            Ok(Command::Subtract(
-                words[1].to_string(),
-                words[2].parse::<i32>()?,
-            ))
-        }
-        "set" => {
-            checkNumOfArguments(2)?;
-            Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?))
-        }
-        "write" => {
-            checkNumOfArguments(1)?;
-            Ok(Command::Write(words[1].to_string()))
-        }
-        other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
-    }
+    Ok(result_commands)
 }

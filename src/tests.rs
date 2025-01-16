@@ -26,7 +26,15 @@ fn commandParsing() {
 
     assert_eq!(
         parseCommand("subtract zero -1".to_string()),
-        Ok(Command::Subtract("zero".to_string(), -1))
+        Ok(vec![Command::Subtract("zero".to_string(), -1)])
+    );
+
+    assert_eq!(
+        parseCommand("subtract zero -1; let a 10".to_string()),
+        Ok(vec![
+            Command::Subtract("zero".to_string(), -1),
+            Command::Let("a".to_string(), 10)
+        ])
     );
 }
 
