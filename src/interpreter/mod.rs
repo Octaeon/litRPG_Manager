@@ -1,4 +1,8 @@
-use crate::types::{engine::Storage, error::RunErr, Command, Content};
+use crate::types::engine::Storage;
+use crate::types::error::RunErr;
+use crate::types::{Command, Content};
+
+mod tests;
 
 pub fn run(storage: &mut Storage, parsed_file: Vec<Content>) -> Result<String, RunErr> {
     // Start interpreting the file
