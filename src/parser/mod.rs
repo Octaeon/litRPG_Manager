@@ -1,6 +1,8 @@
 use crate::types::error::ParsingErr;
 use crate::types::{Command, Content};
 
+mod tests;
+
 /// At the moment, this function takes in a String (which is allocated on the heap)
 /// but doesn't do operation on that specific variable, but instead assigns individuals chars of the input
 /// to the buffer depending on their value.
@@ -145,7 +147,9 @@ pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
                 Ok(Command::Set(words[1].to_string(), words[2].parse::<i32>()?))
             }
             "write" => {
-                checkNumOfArguments(1)?;
+                // As the write command can take in expressions now, there is no check for the
+                // number of arguments.
+                let _a = parseExpression(words[1..].to_vec())?;
                 Ok(Command::Write(words[1].to_string()))
             }
             other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
@@ -155,4 +159,8 @@ pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
     }
 
     Ok(result_commands)
+}
+
+fn parseExpression(_input: Vec<&str>) -> Result<(), ParsingErr> {
+    Ok(())
 }
