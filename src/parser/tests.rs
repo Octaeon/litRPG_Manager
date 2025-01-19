@@ -3,15 +3,70 @@
 #![allow(unused_imports)]
 
 use crate::types::error::ParsingErr;
-use crate::types::{Command, Content};
+use crate::types::{BiOperation, Command, Content, Expression};
 
-use super::{parseCommand, parseExpression, parseFile};
+use super::{parseCommand, parseExpression, parseFile, parseToken, tokenizeExpression, Token};
 
 #[test]
 fn expression() {
-    let input: Vec<&str> = vec!["1 + 2"];
+    assert_eq!(
+        parseExpression("1 + 2".to_string()),
+        Ok(Expression::Binary(
+            BiOperation::Add,
+            Box::new(Expression::Value(1)),
+            Box::new(Expression::Value(2))
+        ))
+    );
 
-    assert_eq!(parseExpression(input), Ok(()));
+    assert_eq!(
+        parseExpression("1 + 2 * 3".to_string()),
+        Ok(Expression::Binary(
+            BiOperation::Add,
+            Box::new(Expression::Value(1)),
+            Box::new(Expression::Binary(
+                BiOperation::Multiply,
+                Box::new(Expression::Value(2)),
+                Box::new(Expression::Value(3))
+            ))
+        ))
+    );
+}
+
+#[test]
+fn tokenizer() {
+    assert_eq!(
+        tokenizeExpression("1+2".to_string()),
+        Ok(vec![
+            Token::Number(1),
+            Token::Operator('+'),
+            Token::Number(2)
+        ])
+    );
+    assert_eq!(
+        tokenizeExpression("1  +    2".to_string()),
+        Ok(vec![
+            Token::Number(1),
+            Token::Operator('+'),
+            Token::Number(2)
+        ])
+    );
+
+    assert_eq!(
+        tokenizeExpression("1*2 + (3 1 - test))".to_string()),
+        Ok(vec![
+            Token::Number(1),
+            Token::Operator('*'),
+            Token::Number(2),
+            Token::Operator('+'),
+            Token::Operator('('),
+            Token::Number(3),
+            Token::Number(1),
+            Token::Operator('-'),
+            Token::Variable("test".to_string()),
+            Token::Operator(')'),
+            Token::Operator(')'),
+        ])
+    );
 }
 
 #[test]

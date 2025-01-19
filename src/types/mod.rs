@@ -4,6 +4,27 @@ pub mod engine;
 pub mod error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expression {
+    Value(i32),
+    Variable(String),
+    Binary(BiOperation, Box<Expression>, Box<Expression>),
+    Unary(UnOperation, Box<Expression>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BiOperation {
+    Add,
+    Subtract,
+    Multiply,
+    Exponentiate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnOperation {
+    Minus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Content {
     Text(String),
     Command(Command),

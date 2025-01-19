@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
+
 use crate::types::error::ParsingErr;
-use crate::types::{Command, Content};
+use crate::types::{BiOperation, Command, Content, Expression, UnOperation};
 
 mod tests;
 
@@ -93,7 +95,7 @@ fn matchCommandEnd(character: char) -> bool {
 /// - add : adds a value to a variable. Example: ```add variable 10```
 /// - subtract : subtracts a value from a variable. Example: ```sub variable 10```
 /// - set : sets a variable to a new value. Example: ```set variable -10```
-pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
+fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
     let statements: Vec<&str> = input
         .split(matchCommandEnd)
         .filter(|c| !c.is_empty())
@@ -149,7 +151,7 @@ pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
             "write" => {
                 // As the write command can take in expressions now, there is no check for the
                 // number of arguments.
-                let _a = parseExpression(words[1..].to_vec())?;
+                let _a = parseExpression(words[1..].concat())?;
                 Ok(Command::Write(words[1].to_string()))
             }
             other_command => Err(ParsingErr::UnrecognizedCommand(other_command.to_string())),
@@ -161,6 +163,230 @@ pub fn parseCommand(input: String) -> Result<Vec<Command>, ParsingErr> {
     Ok(result_commands)
 }
 
-fn parseExpression(_input: Vec<&str>) -> Result<(), ParsingErr> {
-    Ok(())
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Op {
+    Binary(BiOperation),
+    Unary(UnOperation),
+    LeftBracket,
+    RightBracket,
+}
+
+impl PartialOrd for Op {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        if self == other {
+            Some(Ordering::Equal)
+        } else {
+            match self {
+                Op::Binary(BiOperation::Add) | Op::Binary(BiOperation::Subtract) => {
+                    if other == &Op::Binary(BiOperation::Add)
+                        || other == &Op::Binary(BiOperation::Subtract)
+                    {
+                        Some(Ordering::Equal)
+                    } else {
+                        Some(Ordering::Less)
+                    }
+                }
+                Op::Binary(BiOperation::Multiply) => {
+                    if other == &Op::Binary(BiOperation::Add)
+                        || other == &Op::Binary(BiOperation::Subtract)
+                    {
+                        Some(Ordering::Greater)
+                    } else {
+                        Some(Ordering::Less)
+                    }
+                }
+                Op::Binary(BiOperation::Exponentiate) => {
+                    if other == &Op::LeftBracket {
+                        Some(Ordering::Less)
+                    } else {
+                        Some(Ordering::Greater)
+                    }
+                }
+                Op::Unary(UnOperation::Minus) => {
+                    if other == &Op::LeftBracket || other == &Op::Binary(BiOperation::Exponentiate)
+                    {
+                        Some(Ordering::Less)
+                    } else {
+                        Some(Ordering::Greater)
+                    }
+                }
+                Op::LeftBracket => Some(Ordering::Greater),
+                Op::RightBracket => Some(Ordering::Less),
+            }
+        }
+    }
+}
+
+fn toOperation(lastOperation: bool, i: char) -> Result<Op, ParsingErr> {
+    match i {
+        '(' => Ok(Op::LeftBracket),
+        ')' => Ok(Op::RightBracket),
+        '-' => Ok(if lastOperation {
+            Op::Unary(UnOperation::Minus)
+        } else {
+            Op::Binary(BiOperation::Subtract)
+        }),
+        '+' => Ok(Op::Binary(BiOperation::Add)),
+        '*' => Ok(Op::Binary(BiOperation::Multiply)),
+        '^' => Ok(Op::Binary(BiOperation::Exponentiate)),
+        _ => Err(ParsingErr::ExpressionParsing),
+    }
+}
+
+fn collapseOperation(
+    expressions_stack: &mut Vec<Expression>,
+    op_stack: &mut Vec<Op>,
+) -> Result<Expression, ParsingErr> {
+    let popped = |stack: &mut Vec<Expression>| -> Result<Box<Expression>, ParsingErr> {
+        Ok(Box::new(stack.pop().ok_or(ParsingErr::ExpressionParsing)?))
+    };
+
+    let result = match op_stack.pop() {
+        Some(Op::Binary(bi_operation)) => {
+            let rhand = popped(expressions_stack)?;
+            let lhand = popped(expressions_stack)?;
+            Ok(Expression::Binary(bi_operation, lhand, rhand))
+        }
+        Some(Op::Unary(un_operation)) => {
+            Ok(Expression::Unary(un_operation, popped(expressions_stack)?))
+        }
+        Some(Op::LeftBracket) => todo!(),
+        Some(Op::RightBracket) => collapseOperation(expressions_stack, op_stack),
+        None => Err(ParsingErr::ExpressionParsing),
+    }?;
+
+    Ok(result)
+}
+
+fn parseExpression(input: String) -> Result<Expression, ParsingErr> {
+    let tokens: Vec<Token> = tokenizeExpression(input)?;
+
+    let mut operations_stack: Vec<Op> = Vec::new();
+    let mut operands_stack: Vec<Expression> = Vec::new();
+
+    let mut last_token_was_operator = false;
+
+    let shouldCollapse = |stack: &Vec<Op>, op: &Op| -> bool {
+        match stack.last() {
+            Some(stack_operation) => stack_operation < op,
+            None => false,
+        }
+    };
+
+    for t in tokens.iter() {
+        match t {
+            Token::Number(num) => {
+                operands_stack.push(Expression::Value(*num));
+                last_token_was_operator = false;
+            }
+            Token::Variable(var) => {
+                operands_stack.push(Expression::Variable(var.to_owned()));
+                last_token_was_operator = false;
+            }
+            Token::Operator(o) => {
+                let operation = toOperation(last_token_was_operator, *o)?;
+
+                if shouldCollapse(&operations_stack, &operation) {
+                    // if the operation on the stack is of higher priority, pop the operands from the stack
+                    // combine them into a new expression and put it back on the stack.
+                    let new_op = collapseOperation(&mut operands_stack, &mut operations_stack)?;
+
+                    operands_stack.push(new_op);
+                } else {
+                    // if the operation on the stack is of lower priority, continue onwards.
+                    operations_stack.push(operation);
+                }
+
+                last_token_was_operator = true;
+            }
+        }
+    }
+
+    while operands_stack.len() > 1 {
+        let new_op = collapseOperation(&mut operands_stack, &mut operations_stack)?;
+
+        operands_stack.push(new_op);
+    }
+
+    operands_stack.pop().ok_or(ParsingErr::ExpressionParsing)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Token {
+    Number(i32),
+    Operator(char),
+    Variable(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum State {
+    Whitespace,
+    ParsingNumber,
+    ParsingVariable,
+}
+
+fn tokenizeExpression(input: String) -> Result<Vec<Token>, ParsingErr> {
+    let mut tokens: Vec<Token> = Vec::new();
+
+    let mut buffer: String = String::new();
+    let mut state: State = State::Whitespace;
+
+    let createToken = |t: &mut Vec<Token>, buff: &mut String| -> Result<(), ParsingErr> {
+        if !buff.is_empty() {
+            Ok(t.push(parseToken(buff.drain(..).collect())?))
+        } else {
+            Ok(())
+        }
+    };
+
+    for char in input.chars() {
+        match (state, char) {
+            (_, '+' | '-' | '*' | '^' | '(' | ')') => {
+                createToken(&mut tokens, &mut buffer)?;
+
+                tokens.push(Token::Operator(char));
+            }
+
+            (State::ParsingVariable, 'a'..='z' | 'A'..='Z') => {
+                buffer.push(char);
+            }
+            (_, 'a'..='z' | 'A'..='Z') => {
+                createToken(&mut tokens, &mut buffer)?;
+
+                state = State::ParsingVariable;
+                buffer.push(char);
+            }
+
+            (State::ParsingNumber, '0'..='9') => {
+                buffer.push(char);
+            }
+            (_, '0'..='9') => {
+                createToken(&mut tokens, &mut buffer)?;
+
+                state = State::ParsingNumber;
+                buffer.push(char);
+            }
+
+            (_, a) if matchWhitespace(a) => {
+                state = State::Whitespace;
+
+                createToken(&mut tokens, &mut buffer)?;
+            }
+            _ => return Err(ParsingErr::ExpressionParsing),
+        }
+    }
+
+    createToken(&mut tokens, &mut buffer)?;
+
+    Ok(tokens)
+}
+
+fn parseToken(input: String) -> Result<Token, ParsingErr> {
+    if let Ok(num) = input.parse::<i32>() {
+        Ok(Token::Number(num))
+    } else if input.chars().all(|c| c.is_ascii_alphabetic()) {
+        Ok(Token::Variable(input))
+    } else {
+        Err(ParsingErr::UnrecognizedExpression(input))
+    }
 }

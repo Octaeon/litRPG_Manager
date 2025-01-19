@@ -9,6 +9,8 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParsingErr {
+    UnrecognizedExpression(String),
+    ExpressionParsing,
     StringOverflow,
     InvalidNumberOfArguments,
     CommandLeftOpen,
@@ -64,6 +66,10 @@ impl Display for ParsingErr {
             f,
             "{}",
             match self {
+                ParsingErr::UnrecognizedExpression(expr) =>
+                    format!("Unrecognized expression: {expr}"),
+                ParsingErr::ExpressionParsing =>
+                    String::from("There was an error with expression parsing!"),
                 ParsingErr::StringOverflow =>
                     String::from("Somehow, the contents of the file caused a string overflow."),
                 ParsingErr::InvalidNumberOfArguments =>
