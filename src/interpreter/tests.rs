@@ -5,7 +5,7 @@ use crate::types::error::RunErr;
 use crate::types::{Command, Content};
 
 #[test]
-fn interpreterFunctionality() {
+fn functionality() {
     let mut storage = Storage::new();
 
     // Test if trying to modify a nonexisting variable will result in the correct error
